@@ -1,0 +1,117 @@
+version: '2.2'
+services:
+  person-es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.6.0
+    container_name: person-es01
+    environment:
+      - node.name=person-es01
+      - cluster.name=person-es-docker-cluster
+      - discovery.seed_hosts=person-es02,person-es03
+      - cluster.initial_master_nodes=person-es01,person-es02,person-es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - elastic
+  person-es02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.6.0
+    container_name: person-es02
+    environment:
+      - node.name=person-es02
+      - cluster.name=person-es-docker-cluster
+      - discovery.seed_hosts=person-es01,person-es03
+      - cluster.initial_master_nodes=person-es01,person-es02,person-es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data02:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+  person-es03:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.6.0
+    container_name: person-es03
+    environment:
+      - node.name=person-es03
+      - cluster.name=person-es-docker-cluster
+      - discovery.seed_hosts=person-es01,person-es02
+      - cluster.initial_master_nodes=person-es01,person-es02,person-es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data03:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+
+  logstash:
+    container_name: person-logstash
+    image: docker.elastic.co/logstash/logstash:7.6.0
+    environment:
+      - xpack.monitoring.elasticsearch.hosts=person-es01
+    volumes:
+      - ./logstash:/usr/share/logstash/config/
+      - ./pipeline:/usr/share/logstash/pipeline/
+    ports:
+      - 9600:9600
+    networks:
+      - elastic
+
+  person-name:
+    container_name: person-name
+    image: mysql
+    volumes:
+     - ./elastic-name:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: sdfvdscv2rfwdsfsafdascdsca
+    ports:
+      - 3306:3306
+    networks:
+      - elastic
+
+  person-age:
+    container_name: person-age
+    image: postgres
+    volumes:
+     - ./elastic-age:/docker-entrypoint-initdb.d
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: sdfvdscv2rfwdsfsafdascdsca
+    ports:
+      - 5432:5432
+    networks:
+      - elastic
+
+
+volumes:
+  data01:
+    driver: local
+  data02:
+    driver: local
+  data03:
+    driver: local
+  elastic-name:
+    driver: local
+  elastic-age:
+    driver: local
+
+
+
+networks:
+  elastic:
+    driver: bridge
